@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "816424152355",
+    "firebase_url": "https://etows-ffa7c.firebaseio.com",
+    "project_id": "etows-ffa7c",
+    "storage_bucket": "etows-ffa7c.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:816424152355:android:d1d48f9245302be88b3096",
+        "android_client_info": {
+          "package_name": "com.example.etows"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "816424152355-hl241r4hgbhfo0cfnrehepevd0ud0d49.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.etows",
+            "certificate_hash": "6d2773caa5bca909fafb27ddefeb41ed31e2693f"
+          }
+        },
+        {
+          "client_id": "816424152355-mudqv8k22vog9htjd3bs64b5le84i91b.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAa5UwEwrDdke9RdDS2n4TP1DjCjqsHmQA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "816424152355-mudqv8k22vog9htjd3bs64b5le84i91b.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
