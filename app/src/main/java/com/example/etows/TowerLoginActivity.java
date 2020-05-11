@@ -37,7 +37,7 @@ public class TowerLoginActivity extends AppCompatActivity {
             public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
                 FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
                 if(user != null) {
-                    Intent intent = new Intent(TowerLoginActivity.this, MapActivity.class);
+                    Intent intent = new Intent(TowerLoginActivity.this, TowerMapsActivity.class);
                     startActivity(intent);
                     finish();
                     return;

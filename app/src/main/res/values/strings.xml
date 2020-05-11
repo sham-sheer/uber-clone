@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">eTows</string>
+    <string name="title_activity_tower_maps">Map</string>
 </resources>
