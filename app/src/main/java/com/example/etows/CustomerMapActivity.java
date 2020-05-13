@@ -17,6 +17,8 @@ import android.widget.Button;
 
 import com.firebase.geofire.GeoFire;
 import com.firebase.geofire.GeoLocation;
+import com.firebase.geofire.GeoQuery;
+import com.firebase.geofire.GeoQueryEventListener;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationRequest;
@@ -94,6 +96,54 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
                 mMap.addMarker(new MarkerOptions().position(pickUpLocation).title("Pickup here!"));
 
                 nRequest.setText("Looking for tower nearby...");
+
+                getClosestDriver();
+            }
+        });
+    }
+
+    private int radius = 1;
+    private Boolean driverFound = false;
+    private String driverFoundId;
+    private void getClosestDriver() {
+        DatabaseReference driverLocation = FirebaseDatabase.getInstance().getReference().child("driversAvailable");
+
+        GeoFire geoFire = new GeoFire(driverLocation);
+        GeoQuery geoQuery = geoFire.queryAtLocation(new GeoLocation(pickUpLocation.latitude, pickUpLocation.longitude), radius);
+        geoQuery.removeAllListeners();
+
+        geoQuery.addGeoQueryEventListener(new GeoQueryEventListener() {
+            @Override
+            public void onKeyEntered(String key, GeoLocation location) {
+                if(!driverFound) {
+                    driverFound = true;
+                    driverFoundId = key;
+                    nRequest.setText("Driver Found!");
+                }
+
+            }
+
+            @Override
+            public void onKeyExited(String key) {
+
+            }
+
+            @Override
+            public void onKeyMoved(String key, GeoLocation location) {
+
+            }
+
+            @Override
+            public void onGeoQueryReady() {
+                if(!driverFound) {
+                    radius++;
+                    getClosestDriver();
+                }
+            }
+
+            @Override
+            public void onGeoQueryError(DatabaseError error) {
+
             }
         });
     }
