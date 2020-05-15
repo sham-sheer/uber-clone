@@ -18,6 +18,8 @@ import android.os.Bundle;
 import android.provider.ContactsContract;
 import android.view.View;
 import android.widget.Button;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import com.firebase.geofire.GeoFire;
 import com.firebase.geofire.GeoLocation;
@@ -61,6 +63,10 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
 
     private String customerId = "";
 
+    private TextView mCustomerName, mCustomerPhone;
+
+    private LinearLayout mCustomerInfo;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -71,6 +77,12 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
         mapFragment.getMapAsync(this);
 
         nLogout = (Button) findViewById(R.id.logout);
+        mCustomerName = (TextView) findViewById(R.id.customerName);
+        mCustomerPhone = (TextView) findViewById(R.id.customerPhone);
+
+        mCustomerInfo = (LinearLayout) findViewById(R.id.customerInfo);
+
+
         nLogout.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -96,6 +108,7 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
                 if(dataSnapshot.exists()) {
                     customerId = dataSnapshot.getValue().toString();
                     getAssignedCustomerPickupLocation();
+                    getAssignedCustomerInfo();
                 } else {
                     customerId = "";
                     if (assignedCustomerPickupLocationRef != null) {
@@ -103,6 +116,36 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
                     }
                     if (pickUpMarker != null) {
                         pickUpMarker.remove();
+                    }
+                    mCustomerInfo.setVisibility(View.GONE);
+                    mCustomerName.setText("");
+                    mCustomerPhone.setText("");
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+
+            }
+        });
+    }
+
+    private void getAssignedCustomerInfo() {
+        mCustomerInfo.setVisibility(View.VISIBLE);
+        DatabaseReference assignedCustomerInfoRef = FirebaseDatabase.getInstance().getReference().child("Users").child("Customers").child(customerId);
+
+        assignedCustomerInfoRef.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                if(dataSnapshot.exists()) {
+                    Map<String, Object> map = (Map<String, Object>) dataSnapshot.getValue();
+                    if(map.get("name") != null) {
+                        String customerName = map.get("name").toString();
+                        mCustomerName.setText(customerName);
+                    }
+                    if(map.get("phone") != null) {
+                        String customerPhone = map.get("phone").toString();
+                        mCustomerPhone.setText(customerPhone);
                     }
                 }
             }
