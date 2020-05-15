@@ -96,6 +96,14 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
                 if(dataSnapshot.exists()) {
                     customerId = dataSnapshot.getValue().toString();
                     getAssignedCustomerPickupLocation();
+                } else {
+                    customerId = "";
+                    if (assignedCustomerPickupLocationRef != null) {
+                        assignedCustomerPickupLocationRef.removeEventListener(assignedCustomerPickupLocationRefValueEventListener);
+                    }
+                    if (pickUpMarker != null) {
+                        pickUpMarker.remove();
+                    }
                 }
             }
 
@@ -106,9 +114,12 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
         });
     }
 
+    private Marker pickUpMarker;
+    private DatabaseReference assignedCustomerPickupLocationRef;
+    private ValueEventListener assignedCustomerPickupLocationRefValueEventListener;
     private void getAssignedCustomerPickupLocation() {
-        DatabaseReference assignedCustomerPickupLocationRef = FirebaseDatabase.getInstance().getReference().child("customerRequests").child(customerId).child("l");
-        assignedCustomerPickupLocationRef.addValueEventListener(new ValueEventListener() {
+        assignedCustomerPickupLocationRef = FirebaseDatabase.getInstance().getReference().child("customerRequests").child(customerId).child("l");
+        assignedCustomerPickupLocationRefValueEventListener =  assignedCustomerPickupLocationRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                 if(dataSnapshot.exists()) {
@@ -123,7 +134,7 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
                     }
 
                     LatLng driverLatLng = new LatLng(locationLat, locationLng);
-                    mMap.addMarker(new MarkerOptions().position(driverLatLng).title("Pick up here!"));
+                    pickUpMarker = mMap.addMarker(new MarkerOptions().position(driverLatLng).title("Pick up here!"));
                 }
             }
 
