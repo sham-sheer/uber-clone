@@ -188,6 +188,18 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
                         mDriverMarker.remove();
                     }
                     nRequest.setText("Found Tower Location!");
+
+                    Location pickup = new Location("");
+                    pickup.setLatitude(pickUpLocation.latitude);
+                    pickup.setLongitude(pickUpLocation.longitude);
+
+                    Location driverCurrentLocation = new Location("");
+                    pickup.setLatitude(driverLatLng.latitude);
+                    pickup.setLongitude(driverLatLng.longitude);
+
+                    float distance = pickup.distanceTo(driverCurrentLocation);
+
+                    nRequest.setText("Driver distance:" + String.valueOf(distance));
                     mDriverMarker = mMap.addMarker(new MarkerOptions().position(driverLatLng).title("Your Tower!"));
                 }
             }
