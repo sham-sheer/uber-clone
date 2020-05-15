@@ -47,13 +47,11 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
     private GoogleApiClient mGoogleApiClient;
     private Location mLastLocation;
     private LocationRequest mLocationRequest;
-    private Button mLogOut;
     private RestrictionsManager PermissionUtils;
 
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 10;
 
-    private Button nLogout, nRequest;
-    private String mSignOutId;
+    private Button mLogOut, mRequest, mSettings;
     private String mGlobalCurrentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
 
     private LatLng pickUpLocation;
@@ -71,12 +69,14 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
 
-        nLogout = (Button) findViewById(R.id.logout);
-        nRequest = (Button) findViewById(R.id.request);
-        nLogout.setOnClickListener(new View.OnClickListener() {
+        mLogOut = (Button) findViewById(R.id.logout);
+        mRequest = (Button) findViewById(R.id.request);
+        mSettings = (Button) findViewById(R.id.settings);
+
+
+        mLogOut.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                mSignOutId = FirebaseAuth.getInstance().getCurrentUser().getUid();
                 FirebaseAuth.getInstance().signOut();
                 Intent intent = new Intent(CustomerMapActivity.this, MainActivity.class);
                 startActivity(intent);
@@ -84,7 +84,7 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
                 return;
             }
         });
-        nRequest.setOnClickListener(new View.OnClickListener() {
+        mRequest.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 //To tackle Log out problem, using a global user id may change later
@@ -139,10 +139,18 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
                     pickUpLocation = new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude());
                     markerPickUp = mMap.addMarker(new MarkerOptions().position(pickUpLocation).title("Pickup here!"));
 
-                    nRequest.setText("Looking for tower nearby...");
+                    mRequest.setText("Looking for tower nearby...");
 
                     getClosestDriver();
                 }
+            }
+        });
+        mSettings.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(CustomerMapActivity.this, CustomerSettingsActivity.class);
+                startActivityForResult(intent, 1);
+                return;
             }
         });
     }
@@ -165,7 +173,7 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
                 if(!driverFound && requestBool) {
                     driverFound = true;
                     driverFoundId = key;
-                    nRequest.setText("Tower found!");
+                    mRequest.setText("Tower found!");
                     DatabaseReference driverRef = FirebaseDatabase.getInstance().getReference().child("Users").child("Towers").child(driverFoundId);
                     String customerId = mGlobalCurrentUserId;
                     HashMap map = new HashMap();
@@ -174,7 +182,7 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
 
                     getDriverLocation();
 
-                    nRequest.setText("Looking for Tower location...");
+                    mRequest.setText("Looking for Tower location...");
                 }
 
             }
@@ -217,7 +225,7 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
                     List<Object> map = (List<Object>) dataSnapshot.getValue();
                     double locationLat = 0;
                     double locationLng = 0;
-                    nRequest.setText("Driver Found");
+                    mRequest.setText("Driver Found");
                     if(map.get(0) != null) {
                         locationLat = Double.parseDouble(map.get(0).toString());
                     }
@@ -229,7 +237,7 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
                     if(mDriverMarker != null) {
                         mDriverMarker.remove();
                     }
-                    nRequest.setText("Found Tower Location!");
+                    mRequest.setText("Found Tower Location!");
 
                     Location pickup = new Location("");
                     pickup.setLatitude(pickUpLocation.latitude);
@@ -245,9 +253,9 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
                     mDriverMarker = mMap.addMarker(new MarkerOptions().position(driverLatLng).title("Your Tower!"));
 
                     if (distance < 100) {
-                        nRequest.setText("Driver is nearby!");
+                        mRequest.setText("Driver is nearby!");
                     } else {
-                        nRequest.setText("Driver distance:" + String.valueOf(distance));
+                        mRequest.setText("Driver distance:" + String.valueOf(distance));
                     }
                 }
             }
@@ -359,7 +367,7 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
         DatabaseReference ref = FirebaseDatabase.getInstance().getReference("driversAvailable");
 
         GeoFire geoFire = new GeoFire(ref);
-        geoFire.removeLocation(mSignOutId, new GeoFire.CompletionListener() {
+        geoFire.removeLocation(mGlobalCurrentUserId, new GeoFire.CompletionListener() {
             @Override
             public void onComplete(String key, DatabaseError error) {
                 if (error != null) {
