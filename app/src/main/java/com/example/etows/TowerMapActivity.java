@@ -63,7 +63,7 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
 
     private String customerId = "";
 
-    private TextView mCustomerName, mCustomerPhone;
+    private TextView mCustomerName, mCustomerPhone, mCustomerDestination;
 
     private LinearLayout mCustomerInfo;
 
@@ -79,7 +79,7 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
         nLogout = (Button) findViewById(R.id.logout);
         mCustomerName = (TextView) findViewById(R.id.customerName);
         mCustomerPhone = (TextView) findViewById(R.id.customerPhone);
-
+        mCustomerDestination = (TextView) findViewById(R.id.customerDestination);
         mCustomerInfo = (LinearLayout) findViewById(R.id.customerInfo);
 
 
@@ -100,7 +100,7 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
 
     private void getAssignedCustomer() {
         String driverId = mGlobalCurrentUserId;
-        DatabaseReference assignedCustomerRef = FirebaseDatabase.getInstance().getReference().child("Users").child("Towers").child(driverId).child("customerRideId");
+        DatabaseReference assignedCustomerRef = FirebaseDatabase.getInstance().getReference().child("Users").child("Towers").child(driverId).child("customerRequest").child("customerRideId");
 
         assignedCustomerRef.addValueEventListener(new ValueEventListener() {
             @Override
@@ -109,6 +109,7 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
                     customerId = dataSnapshot.getValue().toString();
                     getAssignedCustomerPickupLocation();
                     getAssignedCustomerInfo();
+                    getAssignedCustomerDestination();
                 } else {
                     customerId = "";
                     if (assignedCustomerPickupLocationRef != null) {
@@ -120,6 +121,30 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
                     mCustomerInfo.setVisibility(View.GONE);
                     mCustomerName.setText("");
                     mCustomerPhone.setText("");
+                    mCustomerDestination.setText("Destination: --");
+
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+
+            }
+        });
+    }
+
+    private void getAssignedCustomerDestination() {
+        String driverId = mGlobalCurrentUserId;
+        DatabaseReference assignedCustomerDestinationRef = FirebaseDatabase.getInstance().getReference().child("Users").child("Towers").child(driverId).child("customerRequest").child("destination");
+
+        assignedCustomerDestinationRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                if(dataSnapshot.exists()) {
+                    String destination = dataSnapshot.getValue().toString();
+                    mCustomerDestination.setText("Destination: " + destination);
+                } else {
+                    mCustomerDestination.setText("Destination: --");
                 }
             }
 
@@ -137,7 +162,7 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
         assignedCustomerInfoRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                if(dataSnapshot.exists()) {
+                if(dataSnapshot.exists() && dataSnapshot.getChildrenCount()>0) {
                     Map<String, Object> map = (Map<String, Object>) dataSnapshot.getValue();
                     if(map.get("name") != null) {
                         String customerName = map.get("name").toString();
