@@ -16,6 +16,8 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.TextView;
 
 import com.firebase.geofire.GeoFire;
@@ -79,6 +81,9 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
 
     private final String apiKey = "AIzaSyDd1UAqEcV1lqpYV3FarT4RWlyyVkDISkk";
 
+    private RadioGroup mRadioGroup;
+    private String requestService;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -97,6 +102,10 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
         mDriverCar = (TextView) findViewById(R.id.driverCar);
 
         mDriverInfo = (LinearLayout) findViewById(R.id.driverInfo);
+
+        mRadioGroup = (RadioGroup) findViewById(R.id.radioGroup);
+        mRadioGroup.check(R.id.classTwo);
+
 
 
         mLogOut.setOnClickListener(new View.OnClickListener() {
@@ -158,6 +167,18 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
 
                     mRequest.setText("Call Tower");
                 } else {
+                    mRequest.setText("Looking for tower nearby...");
+
+                    int selectId = mRadioGroup.getCheckedRadioButtonId();
+
+                    final RadioButton radioButton = (RadioButton) findViewById(selectId);
+
+                    if(radioButton.getText() == null) {
+                        return;
+                    }
+
+                    requestService = radioButton.getText().toString();
+
                     requestBool = true;
                     String userId = mGlobalCurrentUserId;
                     DatabaseReference ref = FirebaseDatabase.getInstance().getReference("customerRequests");
@@ -175,8 +196,6 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
 
                     pickUpLocation = new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude());
                     markerPickUp = mMap.addMarker(new MarkerOptions().position(pickUpLocation).title("Pickup here!"));
-
-                    mRequest.setText("Looking for tower nearby...");
 
                     getClosestDriver();
                 }
@@ -234,20 +253,41 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
             @Override
             public void onKeyEntered(String key, GeoLocation location) {
                 if(!driverFound && requestBool) {
-                    driverFound = true;
-                    driverFoundId = key;
-                    mRequest.setText("Tower found!");
-                    DatabaseReference driverRef = FirebaseDatabase.getInstance().getReference().child("Users").child("Towers").child(driverFoundId).child("customerRequest");
-                    String customerId = mGlobalCurrentUserId;
-                    HashMap map = new HashMap();
-                    map.put("customerRideId", customerId);
-                    map.put("destination", destination);
-                    driverRef.updateChildren(map);
+                    DatabaseReference mCustomerDatabase = FirebaseDatabase.getInstance().getReference().child("Users").child("Towers").child(key);
+                    mCustomerDatabase.addListenerForSingleValueEvent(new ValueEventListener() {
+                        @Override
+                        public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                            if(dataSnapshot.exists() && dataSnapshot.getChildrenCount()>0) {
+                                Map<String, Object>  driverMap = (Map<String, Object>) dataSnapshot.getValue();
+                                if(driverFound) {
+                                    return;
+                                }
+                                if(driverMap.get("service") != null) {
+                                    if(driverMap.get("service").equals(requestService)) {
+                                        driverFound = true;
+                                        driverFoundId = dataSnapshot.getKey();
+                                        mRequest.setText("Tower found!");
+                                        DatabaseReference driverRef = FirebaseDatabase.getInstance().getReference().child("Users").child("Towers").child(driverFoundId).child("customerRequest");
+                                        String customerId = mGlobalCurrentUserId;
+                                        HashMap map = new HashMap();
+                                        map.put("customerRideId", customerId);
+                                        map.put("destination", destination);
+                                        driverRef.updateChildren(map);
 
-                    getDriverLocation();
-                    getDriverInfo();
+                                        getDriverLocation();
+                                        getDriverInfo();
 
-                    mRequest.setText("Looking for Tower location...");
+                                        mRequest.setText("Looking for Tower location...");
+                                    }
+                                }
+                            }
+                        }
+
+                        @Override
+                        public void onCancelled(@NonNull DatabaseError databaseError) {
+
+                        }
+                    });
                 }
 
             }

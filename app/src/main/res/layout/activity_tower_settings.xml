@@ -23,6 +23,30 @@
         android:layout_marginBottom="20sp"
         android:id="@+id/phone"
         android:inputType="number"/>
+    <RadioGroup
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Class 2 Vehicles"
+        android:id="@+id/radioGroup"
+        android:orientation="horizontal">
+        <RadioButton
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Class2Vehicles"
+            android:id="@+id/classTwo"/>
+        <RadioButton
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Class3Vehicles"
+            android:id="@+id/classThree"/>
+        <RadioButton
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Class4Vehicles"
+            android:id="@+id/classFour"/>
+
+    </RadioGroup>
+
     <EditText
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

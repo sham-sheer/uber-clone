@@ -75,6 +75,34 @@
                 android:paddingTop="20sp"
                 android:paddingBottom="10sp" />
         </LinearLayout>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@android:color/white">
+            <RadioGroup
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:id="@+id/radioGroup"
+                android:orientation="horizontal">
+                <RadioButton
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Class2Vehicles"
+                    android:id="@+id/classTwo"/>
+                <RadioButton
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Class3Vehicles"
+                    android:id="@+id/classThree"/>
+                <RadioButton
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Class4Vehicles"
+                    android:id="@+id/classFour"/>
+
+            </RadioGroup>
+        </LinearLayout>
         <Button
             android:id="@+id/request"
             android:layout_width="331dp"

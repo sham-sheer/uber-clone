@@ -7,6 +7,8 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
@@ -31,6 +33,10 @@ public class TowerSettingsActivity extends AppCompatActivity {
 
     private String mName, mPhone, mCar;
 
+    private String mService;
+    private RadioGroup mRadioGroup;
+    private RadioButton mClassTwo, mClassThree, mClassFour;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -42,6 +48,9 @@ public class TowerSettingsActivity extends AppCompatActivity {
 
         mConfirm = (Button) findViewById(R.id.confirm);
         mBack = (Button) findViewById(R.id.back);
+
+        mRadioGroup = (RadioGroup) findViewById(R.id.radioGroup);
+
 
         mAuth = FirebaseAuth.getInstance();
         userId = mAuth.getCurrentUser().getUid();
@@ -84,6 +93,20 @@ public class TowerSettingsActivity extends AppCompatActivity {
                         mCar = map.get("car").toString();
                         mCarField.setText(mCar);
                     }
+                    if(map.get("service") != null) {
+                        mService = map.get("service").toString();
+                        switch (mService) {
+                            case "Class2Vehicles":
+                                mRadioGroup.check(R.id.classTwo);
+                                break;
+                            case "Class3Vehicles":
+                                mRadioGroup.check(R.id.classThree);
+                                break;
+                            case "Class4Vehicles":
+                                mRadioGroup.check(R.id.classFour);
+                                break;
+                        }
+                    }
                 }
             }
 
@@ -99,10 +122,21 @@ public class TowerSettingsActivity extends AppCompatActivity {
         mPhone = mPhoneField.getText().toString();
         mCar = mCarField.getText().toString();
 
+        int selectId = mRadioGroup.getCheckedRadioButtonId();
+
+        final RadioButton radioButton = (RadioButton) findViewById(selectId);
+
+        if(radioButton.getText() == null) {
+            return;
+        }
+
+        mService = radioButton.getText().toString();
+
         Map userInfo = new HashMap();
         userInfo.put("name", mName);
         userInfo.put("phone", mPhone);
         userInfo.put("car", mCar);
+        userInfo.put("service", mService);
 
         mDriverDatabase.updateChildren(userInfo);
 
