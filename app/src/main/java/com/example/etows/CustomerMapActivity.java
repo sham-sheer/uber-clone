@@ -15,6 +15,8 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import com.firebase.geofire.GeoFire;
 import com.firebase.geofire.GeoLocation;
@@ -48,6 +50,7 @@ import com.google.firebase.database.ValueEventListener;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class CustomerMapActivity extends FragmentActivity implements OnMapReadyCallback, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, com.google.android.gms.location.LocationListener {
 
@@ -70,6 +73,10 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
 
     private String destination;
 
+    private TextView mDriverName, mDriverPhone, mDriverCar;
+
+    private LinearLayout mDriverInfo;
+
     private final String apiKey = "AIzaSyDd1UAqEcV1lqpYV3FarT4RWlyyVkDISkk";
 
     @Override
@@ -84,6 +91,12 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
         mLogOut = (Button) findViewById(R.id.logout);
         mRequest = (Button) findViewById(R.id.request);
         mSettings = (Button) findViewById(R.id.settings);
+
+        mDriverName = (TextView) findViewById(R.id.driverName);
+        mDriverPhone = (TextView) findViewById(R.id.driverPhone);
+        mDriverCar = (TextView) findViewById(R.id.driverCar);
+
+        mDriverInfo = (LinearLayout) findViewById(R.id.driverInfo);
 
 
         mLogOut.setOnClickListener(new View.OnClickListener() {
@@ -102,6 +115,7 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
                 //To tackle Log out problem, using a global user id may change later
                 // String userId = FirebaseAuth.getInstance().getCurrentUser().getUid();
                 if (requestBool) {
+                    mRequest.setText("Cancelling...");
                     requestBool = false;
                     geoQuery.removeAllListeners();
                     driverLocationRef.removeEventListener(driverLocationRefListener);
@@ -122,8 +136,8 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
                     });
 
                     if (driverFound) {
-                        DatabaseReference driverRef = FirebaseDatabase.getInstance().getReference().child("Users").child("Towers").child(driverFoundId);
-                        driverRef.setValue(true);
+                        DatabaseReference driverRef = FirebaseDatabase.getInstance().getReference().child("Users").child("Towers").child(driverFoundId).child("customerRequest");
+                        driverRef.removeValue();
                         driverFoundId = null;
 
                     }
@@ -132,6 +146,17 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
                     if(markerPickUp != null) {
                         markerPickUp.remove();
                     }
+
+                    if(mDriverMarker != null) {
+                        mDriverMarker.remove();
+                    }
+
+                    mDriverInfo.setVisibility(View.INVISIBLE);
+                    mDriverName.setText("");
+                    mDriverPhone.setText("");
+                    mDriverCar.setText("Car: --");
+
+                    mRequest.setText("Call Tower");
                 } else {
                     requestBool = true;
                     String userId = mGlobalCurrentUserId;
@@ -220,6 +245,7 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
                     driverRef.updateChildren(map);
 
                     getDriverLocation();
+                    getDriverInfo();
 
                     mRequest.setText("Looking for Tower location...");
                 }
@@ -251,12 +277,42 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
         });
     }
 
+    private void getDriverInfo() {
+        mDriverInfo.setVisibility(View.VISIBLE);
+        DatabaseReference driverInfoRef = FirebaseDatabase.getInstance().getReference().child("Users").child("Towers").child(driverFoundId);
+
+        driverInfoRef.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                if(dataSnapshot.exists() && dataSnapshot.getChildrenCount()>0) {
+                    Map<String, Object> map = (Map<String, Object>) dataSnapshot.getValue();
+                    if(map.get("name") != null) {
+                        String driverName = map.get("name").toString();
+                        mDriverName.setText(driverName);
+                    }
+                    if(map.get("phone") != null) {
+                        String driverPhone = map.get("phone").toString();
+                        mDriverPhone.setText(driverPhone);
+                    }
+                    if(map.get("car") != null) {
+                        String driverCar = map.get("car").toString();
+                        mDriverCar.setText(driverCar);
+                    }
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+
+            }
+        });
+    }
+
     private Marker mDriverMarker;
     private DatabaseReference driverLocationRef;
     private ValueEventListener driverLocationRefListener;
     private void getDriverLocation() {
         driverLocationRef = FirebaseDatabase.getInstance().getReference().child("driversWorking").child(driverFoundId).child("l");
-        System.out.println("Hello");
         driverLocationRefListener = driverLocationRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
@@ -399,10 +455,7 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
 
     }
 
-    @Override
-    protected void onStop() {
-        super.onStop();
-
+    private void disconnectDriver() {
         DatabaseReference ref = FirebaseDatabase.getInstance().getReference("driversAvailable");
 
         GeoFire geoFire = new GeoFire(ref);
@@ -416,5 +469,11 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
                 }
             }
         });
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        disconnectDriver();
     }
 }

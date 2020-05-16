@@ -57,7 +57,7 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
 
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 10;
 
-    private Button nLogout;
+    private Button nLogout, mSettings;
     private String mSignOutId;
     private String mGlobalCurrentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
 
@@ -77,6 +77,8 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
         mapFragment.getMapAsync(this);
 
         nLogout = (Button) findViewById(R.id.logout);
+        mSettings = (Button) findViewById(R.id.settings);
+
         mCustomerName = (TextView) findViewById(R.id.customerName);
         mCustomerPhone = (TextView) findViewById(R.id.customerPhone);
         mCustomerDestination = (TextView) findViewById(R.id.customerDestination);
@@ -91,6 +93,15 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
                 Intent intent = new Intent(TowerMapActivity.this, MainActivity.class);
                 startActivity(intent);
                 finish();
+                return;
+            }
+        });
+
+        mSettings.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(TowerMapActivity.this, TowerSettingsActivity.class);
+                startActivityForResult(intent, 1);
                 return;
             }
         });
@@ -358,14 +369,11 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
 
     }
 
-    @Override
-    protected void onStop() {
-        super.onStop();
-
+    private void disconnectDriver() {
         DatabaseReference ref = FirebaseDatabase.getInstance().getReference("driversAvailable");
 
         GeoFire geoFire = new GeoFire(ref);
-        geoFire.removeLocation(mSignOutId, new GeoFire.CompletionListener() {
+        geoFire.removeLocation(mGlobalCurrentUserId, new GeoFire.CompletionListener() {
             @Override
             public void onComplete(String key, DatabaseError error) {
                 if (error != null) {
@@ -375,5 +383,12 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
                 }
             }
         });
+    }
+
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        disconnectDriver();
     }
 }

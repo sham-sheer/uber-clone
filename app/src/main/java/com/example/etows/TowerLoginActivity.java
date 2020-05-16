@@ -66,8 +66,14 @@ public class TowerLoginActivity extends AppCompatActivity {
                         }
                         else {
                             String user_id = nAuth.getCurrentUser().getUid();
-                            DatabaseReference current_user_db = FirebaseDatabase.getInstance().getReference().child("Users").child("Towers").child(user_id);
-                            current_user_db.setValue(true);
+                            DatabaseReference current_user_db = FirebaseDatabase.getInstance().getReference().child("Users").child("Towers").child(user_id).child("name");
+                            current_user_db.setValue(email);
+
+                            // For testing purposes
+                            DatabaseReference current_user_db_phone = FirebaseDatabase.getInstance().getReference().child("Users").child("Towers").child(user_id).child("phone");
+                            current_user_db_phone.setValue("91475726");
+                            DatabaseReference current_user_db_car = FirebaseDatabase.getInstance().getReference().child("Users").child("Towers").child(user_id).child("car");
+                            current_user_db_car.setValue("mazda");
                         }
                     }
                 });
