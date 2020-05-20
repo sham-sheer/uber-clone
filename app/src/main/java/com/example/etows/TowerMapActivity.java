@@ -11,30 +11,50 @@ import android.Manifest;
 import android.content.Intent;
 import android.content.RestrictionsManager;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.location.Location;
 import android.location.LocationListener;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Looper;
 import android.provider.ContactsContract;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.akexorcist.googledirection.DirectionCallback;
+import com.akexorcist.googledirection.GoogleDirection;
+import com.akexorcist.googledirection.model.Coordination;
+import com.akexorcist.googledirection.model.Direction;
+import com.akexorcist.googledirection.model.Info;
+import com.akexorcist.googledirection.model.Leg;
+import com.akexorcist.googledirection.model.Route;
+import com.akexorcist.googledirection.model.Step;
+import com.akexorcist.googledirection.util.DirectionConverter;
 import com.firebase.geofire.GeoFire;
 import com.firebase.geofire.GeoLocation;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApi;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.LocationSettingsRequest;
+import com.google.android.gms.location.SettingsClient;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.Polyline;
+import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -43,19 +63,39 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
 import java.sql.DriverManager;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
+import static com.google.android.gms.location.LocationServices.getFusedLocationProviderClient;
 
 public class TowerMapActivity extends FragmentActivity implements OnMapReadyCallback, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, com.google.android.gms.location.LocationListener {
 
     private GoogleMap mMap;
     private GoogleApiClient mGoogleApiClient;
-    private Location mLastLocation;
+    private Location mLastLocation, mMockDriverLocation;
+
     private LocationRequest mLocationRequest;
+    private FusedLocationProviderClient mFusedLocationClient;
+    private LocationCallback mLocationCallback = new LocationCallback(){
+        @Override
+        public void onLocationResult(LocationResult locationResult) {
+            for (Location location : locationResult.getLocations()) {
+                Log.i("MainActivity", "Location: " + location.getLatitude() + " " + location.getLongitude());
+
+            }
+        };
+
+    };
+
+    private long UPDATE_INTERVAL = 10 * 1000;  /* 10 secs */
+    private long FASTEST_INTERVAL = 2000; /* 2 sec */
+
     private Button mLogOut;
     private RestrictionsManager PermissionUtils;
 
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 10;
+    private final String apiKey = "AIzaSyDd1UAqEcV1lqpYV3FarT4RWlyyVkDISkk";
 
     private Button nLogout, mSettings;
     private String mSignOutId;
@@ -66,6 +106,9 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
     private TextView mCustomerName, mCustomerPhone, mCustomerDestination;
 
     private LinearLayout mCustomerInfo;
+
+    private Boolean cameraShowingRoute = false;
+    private Polyline polyline;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -109,6 +152,35 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
         getAssignedCustomer();
     }
 
+    protected void startLocationUpdates() {
+        // Create the location request to start receiving updates
+        mLocationRequest = new LocationRequest();
+        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        mLocationRequest.setInterval(UPDATE_INTERVAL);
+        mLocationRequest.setFastestInterval(FASTEST_INTERVAL);
+
+        // Create LocationSettingsRequest object using location request
+        LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder();
+        builder.addLocationRequest(mLocationRequest);
+        LocationSettingsRequest locationSettingsRequest = builder.build();
+
+        // Check whether location settings are satisfied
+        // https://developers.google.com/android/reference/com/google/android/gms/location/SettingsClient
+        SettingsClient settingsClient = LocationServices.getSettingsClient(this);
+        settingsClient.checkLocationSettings(locationSettingsRequest);
+
+        // new Google API SDK v11 uses getFusedLocationProviderClient(this)
+        mFusedLocationClient = getFusedLocationProviderClient(this);
+        mFusedLocationClient.requestLocationUpdates(mLocationRequest, new LocationCallback() {
+                    @Override
+                    public void onLocationResult(LocationResult locationResult) {
+                        // do work here
+                        onLocationChanged(locationResult.getLastLocation());
+                    }
+                },
+                Looper.myLooper());
+    }
+
     private void getAssignedCustomer() {
         String driverId = mGlobalCurrentUserId;
         DatabaseReference assignedCustomerRef = FirebaseDatabase.getInstance().getReference().child("Users").child("Towers").child(driverId).child("customerRequest").child("customerRideId");
@@ -133,7 +205,10 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
                     mCustomerName.setText("");
                     mCustomerPhone.setText("");
                     mCustomerDestination.setText("Destination: --");
-
+                    cameraShowingRoute = false;
+                    if(polyline != null) {
+                        polyline.remove();
+                    }
                 }
             }
 
@@ -212,8 +287,10 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
                         locationLng = Double.parseDouble(map.get(1).toString());
                     }
 
-                    LatLng driverLatLng = new LatLng(locationLat, locationLng);
-                    pickUpMarker = mMap.addMarker(new MarkerOptions().position(driverLatLng).title("Pick up here!"));
+                    LatLng pickUpLatLng = new LatLng(locationLat, locationLng);
+                    pickUpMarker = mMap.addMarker(new MarkerOptions().position(pickUpLatLng).title("Pick up here!"));
+
+                    getRouteToCustomerPickUp(pickUpLatLng);
                 }
             }
 
@@ -222,6 +299,44 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
 
             }
         });
+    }
+
+    private void getRouteToCustomerPickUp(LatLng pickUpLatLng) {
+        LatLng origin = new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude());
+        GoogleDirection.withServerKey(apiKey)
+                .from(origin)
+                .to(pickUpLatLng)
+                .execute(new DirectionCallback() {
+                    @Override
+                    public void onDirectionSuccess(Direction direction) {
+                        System.out.println("Direction Success!");
+                        if(direction.isOK()) {
+                            Route route = direction.getRouteList().get(0);
+                            Leg leg = route.getLegList().get(0);
+                            ArrayList<LatLng> directionPositionList = leg.getDirectionPoint();
+                            PolylineOptions polylineOptions = DirectionConverter.createPolyline(TowerMapActivity.this, directionPositionList, 5, Color.RED);
+                            polyline = mMap.addPolyline(polylineOptions);
+                            setCameraWithCoordinationBounds(route);
+                        } else {
+                            String error = direction.getErrorMessage();
+                            Log.e("Direction Error:", error);
+                        }
+                    }
+
+                    @Override
+                    public void onDirectionFailure(Throwable t) {
+                        // Do something here
+                    }
+                });
+    }
+
+    private void setCameraWithCoordinationBounds(Route route) {
+        LatLng southwest = route.getBound().getSouthwestCoordination().getCoordination();
+        LatLng northeast = route.getBound().getNortheastCoordination().getCoordination();
+        LatLngBounds bounds = new LatLngBounds(southwest, northeast);
+        mMap.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, 100));
+        cameraShowingRoute = true;
+
     }
 
     @Override
@@ -248,6 +363,7 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
                 == PackageManager.PERMISSION_GRANTED) {
             if (mMap != null) {
                 mMap.setMyLocationEnabled(true);
+                //mMap.setLocation
             }
         } else {
 
@@ -287,9 +403,15 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
     public void onLocationChanged(Location location) {
         mLastLocation = location;
         LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
+        //Location mockLocation = new Location("provider");
+        //mockLocation.setLatitude(37.441883);
+        //mockLocation.setLongitude(-122.143021);
+        //LatLng mockLatLng = new LatLng(37.441883, -122.143021);
 
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
-        mMap.animateCamera(CameraUpdateFactory.zoomTo(11));
+        if(!cameraShowingRoute) {
+            mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
+            mMap.animateCamera(CameraUpdateFactory.zoomTo(12));
+        }
 
         String userId = mGlobalCurrentUserId;
         DatabaseReference refAvailable = FirebaseDatabase.getInstance().getReference("driversAvailable");
@@ -348,14 +470,15 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
     @Override
     public void onConnected(@Nullable Bundle bundle) {
         mLocationRequest = new LocationRequest();
-        mLocationRequest.setInterval(3000);
-        mLocationRequest.setFastestInterval(3000);
+        mLocationRequest.setInterval(UPDATE_INTERVAL);
+        mLocationRequest.setFastestInterval(FASTEST_INTERVAL);
 
         if(ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             return;
         }
         mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-        LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
+//        LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
+        startLocationUpdates();
 
     }
 
@@ -390,5 +513,21 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
     protected void onStop() {
         super.onStop();
         disconnectDriver();
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        if (mFusedLocationClient != null) {
+            mFusedLocationClient.removeLocationUpdates(mLocationCallback);
+        }
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (mFusedLocationClient != null) {
+            startLocationUpdates();
+        }
     }
 }

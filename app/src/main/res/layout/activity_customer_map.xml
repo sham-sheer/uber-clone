@@ -84,12 +84,14 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:id="@+id/radioGroup"
-                android:orientation="horizontal">
+                android:orientation="vertical">
+
                 <RadioButton
+                    android:id="@+id/classTwo"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Class2Vehicles"
-                    android:id="@+id/classTwo"/>
+                    android:text="Class2Vehicles" />
+
                 <RadioButton
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"

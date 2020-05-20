@@ -26,9 +26,10 @@
     <RadioGroup
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Class 2 Vehicles"
+        android:background="@null"
+        android:text="Vehicles Classes"
         android:id="@+id/radioGroup"
-        android:orientation="horizontal">
+        android:orientation="vertical">
         <RadioButton
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
