@@ -64,7 +64,7 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
 
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 10;
 
-    private Button mLogOut, mRequest, mSettings;
+    private Button mLogOut, mRequest, mSettings, mHistory;
     private String mGlobalCurrentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
 
     private LatLng pickUpLocation, mDestinationLatLng;
@@ -99,6 +99,7 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
         mLogOut = (Button) findViewById(R.id.logout);
         mRequest = (Button) findViewById(R.id.request);
         mSettings = (Button) findViewById(R.id.settings);
+        mHistory = (Button) findViewById(R.id.history);
 
         mDriverName = (TextView) findViewById(R.id.driverName);
         mDriverPhone = (TextView) findViewById(R.id.driverPhone);
@@ -139,6 +140,15 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
                 Intent intent = new Intent(CustomerMapActivity.this, CustomerSettingsActivity.class);
                 startActivityForResult(intent, 1);
                 return;
+            }
+        });
+
+        mHistory.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(CustomerMapActivity.this, HistoryActivity.class);
+                startActivity(intent);
+                finish();
             }
         });
 
