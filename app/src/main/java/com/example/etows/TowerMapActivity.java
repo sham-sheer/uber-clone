@@ -64,6 +64,7 @@ import com.google.firebase.database.ValueEventListener;
 
 import java.sql.DriverManager;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -176,6 +177,7 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
                         mRideStatus.setText("Towing Completed");
                         break;
                     case 2:
+                        recordRide();
                         endRide();
                         break;
                 }
@@ -183,6 +185,23 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
         });
 
         getAssignedCustomer();
+    }
+
+    private void recordRide() {
+        String userId = mGlobalCurrentUserId;
+        DatabaseReference driverRef = FirebaseDatabase.getInstance().getReference().child("Users").child("Towers").child(userId).child("history");
+        DatabaseReference customerRef = FirebaseDatabase.getInstance().getReference().child("Users").child("Customers").child(customerId).child("history");
+        DatabaseReference historyRef = FirebaseDatabase.getInstance().getReference().child("history");
+
+        String requestId = historyRef.push().getKey();
+        driverRef.child(requestId).setValue(true);
+        customerRef.child(requestId).setValue(true);
+
+        HashMap map = new HashMap();
+        map.put("driver", userId);
+        map.put("customer", customerId);
+        map.put("ratings", 0);
+        historyRef.child(requestId).updateChildren(map);
     }
 
     private void endRide() {
