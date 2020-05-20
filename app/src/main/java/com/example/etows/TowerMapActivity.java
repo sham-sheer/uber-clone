@@ -201,7 +201,13 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
         map.put("driver", userId);
         map.put("customer", customerId);
         map.put("ratings", 0);
+        map.put("timestamp", getCurrentTimestamp());
         historyRef.child(requestId).updateChildren(map);
+    }
+
+    private Long getCurrentTimestamp() {
+       Long timestamp = System.currentTimeMillis()/1000;
+       return timestamp;
     }
 
     private void endRide() {

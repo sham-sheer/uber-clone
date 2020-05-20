@@ -13,11 +13,13 @@ import org.w3c.dom.Text;
 public class HistoryViewHolders extends RecyclerView.ViewHolder implements View.OnClickListener {
 
     public TextView rideId;
+    public TextView timestamp;
     public HistoryViewHolders(@NonNull View itemView) {
         super(itemView);
         itemView.setOnClickListener(this);
 
         rideId = (TextView) itemView.findViewById(R.id.rideId);
+        timestamp = (TextView) itemView.findViewById(R.id.timestamp);
     }
 
     @Override
