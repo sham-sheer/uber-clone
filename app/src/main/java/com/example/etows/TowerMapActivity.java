@@ -97,18 +97,24 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 10;
     private final String apiKey = "AIzaSyDd1UAqEcV1lqpYV3FarT4RWlyyVkDISkk";
 
-    private Button nLogout, mSettings;
+    private Button nLogout, mSettings, mRideStatus;
+
+    private int status = 0;
+
+    private LatLng destinationLatLng;
+
     private String mSignOutId;
     private String mGlobalCurrentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
 
-    private String customerId = "";
+    private String customerId = "", destination;
 
     private TextView mCustomerName, mCustomerPhone, mCustomerDestination;
 
     private LinearLayout mCustomerInfo;
 
     private Boolean cameraShowingRoute = false;
-    private Polyline polyline;
+    List<Polyline> polylines = new ArrayList<Polyline>();
+    private Marker dropOffMarker, pickUpMarker;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -121,6 +127,7 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
 
         nLogout = (Button) findViewById(R.id.logout);
         mSettings = (Button) findViewById(R.id.settings);
+        mRideStatus = (Button) findViewById(R.id.rideStatus);
 
         mCustomerName = (TextView) findViewById(R.id.customerName);
         mCustomerPhone = (TextView) findViewById(R.id.customerPhone);
@@ -149,7 +156,78 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
             }
         });
 
+        mRideStatus.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                switch(status) {
+                    case 1:
+                        status = 2;
+                        for(Polyline line : polylines)
+                        {
+                            line.remove();
+                        }
+
+                        polylines.clear();
+                        if(destinationLatLng.latitude != 0.0 && destinationLatLng.longitude != 0.0) {
+                            getRouteToMarker(destinationLatLng);
+                        }
+                        pickUpMarker.remove();
+                        dropOffMarker = mMap.addMarker(new MarkerOptions().position(destinationLatLng).title("Drop off here!"));
+                        mRideStatus.setText("Towing Completed");
+                        break;
+                    case 2:
+                        endRide();
+                        break;
+                }
+            }
+        });
+
         getAssignedCustomer();
+    }
+
+    private void endRide() {
+        mRideStatus.setText("picked customer");
+
+        for(Polyline line : polylines)
+        {
+            line.remove();
+        }
+
+        polylines.clear();
+
+        String userId = mGlobalCurrentUserId;
+        DatabaseReference driverRef = FirebaseDatabase.getInstance().getReference().child("Users").child("Towers").child(userId).child("customerRequest");
+        driverRef.removeValue();
+
+        DatabaseReference ref = FirebaseDatabase.getInstance().getReference("customerRequests");
+        GeoFire geoFire = new GeoFire(ref);
+
+        geoFire.removeLocation(customerId, new GeoFire.CompletionListener() {
+            @Override
+            public void onComplete(String key, DatabaseError error) {
+                if (error != null) {
+                    System.err.println("There was an error saving the location to GeoFire: " + error);
+                } else {
+                    System.out.println("Location saved on server successfully!");
+                }
+            }
+        });
+        customerId = "";
+
+        if(pickUpMarker != null) {
+            pickUpMarker.remove();
+        }
+
+        if(dropOffMarker != null) {
+            dropOffMarker.remove();
+        }
+
+        mCustomerInfo.setVisibility(View.GONE);
+        mCustomerName.setText("");
+        mCustomerPhone.setText("");
+        mCustomerDestination.setText("Destination: --");
+
+        cameraShowingRoute = false;
     }
 
     protected void startLocationUpdates() {
@@ -189,26 +267,13 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                 if(dataSnapshot.exists()) {
+                    status = 1;
                     customerId = dataSnapshot.getValue().toString();
                     getAssignedCustomerPickupLocation();
                     getAssignedCustomerInfo();
                     getAssignedCustomerDestination();
                 } else {
-                    customerId = "";
-                    if (assignedCustomerPickupLocationRef != null) {
-                        assignedCustomerPickupLocationRef.removeEventListener(assignedCustomerPickupLocationRefValueEventListener);
-                    }
-                    if (pickUpMarker != null) {
-                        pickUpMarker.remove();
-                    }
-                    mCustomerInfo.setVisibility(View.GONE);
-                    mCustomerName.setText("");
-                    mCustomerPhone.setText("");
-                    mCustomerDestination.setText("Destination: --");
-                    cameraShowingRoute = false;
-                    if(polyline != null) {
-                        polyline.remove();
-                    }
+                    endRide();
                 }
             }
 
@@ -221,14 +286,30 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
 
     private void getAssignedCustomerDestination() {
         String driverId = mGlobalCurrentUserId;
-        DatabaseReference assignedCustomerDestinationRef = FirebaseDatabase.getInstance().getReference().child("Users").child("Towers").child(driverId).child("customerRequest").child("destination");
+        DatabaseReference assignedCustomerDestinationRef = FirebaseDatabase.getInstance().getReference().child("Users").child("Towers").child(driverId).child("customerRequest");
 
         assignedCustomerDestinationRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                 if(dataSnapshot.exists()) {
-                    String destination = dataSnapshot.getValue().toString();
-                    mCustomerDestination.setText("Destination: " + destination);
+                    Map<String, Object> map = (Map<String, Object> ) dataSnapshot.getValue();
+                    if(map.get("destination") != null) {
+                        destination = map.get("destination").toString();
+                        mCustomerDestination.setText("Destination:" + destination);
+                    }
+
+                    Double destinationLat = 0.0;
+                    Double destinationLng = 0.0;
+
+                    if(map.get("destinationLat") != null ) {
+                        destinationLat = Double.valueOf(map.get("destinationLat").toString());
+                    }
+                    if(map.get("destinationLng") != null ) {
+                        destinationLng = Double.valueOf(map.get("destinationLng").toString());
+                    }
+
+                    destinationLatLng = new LatLng(destinationLat, destinationLng);
+
                 } else {
                     mCustomerDestination.setText("Destination: --");
                 }
@@ -268,7 +349,6 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
         });
     }
 
-    private Marker pickUpMarker;
     private DatabaseReference assignedCustomerPickupLocationRef;
     private ValueEventListener assignedCustomerPickupLocationRefValueEventListener;
     private void getAssignedCustomerPickupLocation() {
@@ -290,7 +370,7 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
                     LatLng pickUpLatLng = new LatLng(locationLat, locationLng);
                     pickUpMarker = mMap.addMarker(new MarkerOptions().position(pickUpLatLng).title("Pick up here!"));
 
-                    getRouteToCustomerPickUp(pickUpLatLng);
+                    getRouteToMarker(pickUpLatLng);
                 }
             }
 
@@ -301,7 +381,7 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
         });
     }
 
-    private void getRouteToCustomerPickUp(LatLng pickUpLatLng) {
+    private void getRouteToMarker(LatLng pickUpLatLng) {
         LatLng origin = new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude());
         GoogleDirection.withServerKey(apiKey)
                 .from(origin)
@@ -315,7 +395,7 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
                             Leg leg = route.getLegList().get(0);
                             ArrayList<LatLng> directionPositionList = leg.getDirectionPoint();
                             PolylineOptions polylineOptions = DirectionConverter.createPolyline(TowerMapActivity.this, directionPositionList, 5, Color.RED);
-                            polyline = mMap.addPolyline(polylineOptions);
+                            polylines.add(mMap.addPolyline(polylineOptions));
                             setCameraWithCoordinationBounds(route);
                         } else {
                             String error = direction.getErrorMessage();

@@ -153,7 +153,7 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
         AutocompleteSupportFragment autocompleteFragment = (AutocompleteSupportFragment)
                 getSupportFragmentManager().findFragmentById(R.id.autocomplete_fragment);
 
-        autocompleteFragment.setPlaceFields(Arrays.asList(Place.Field.ID, Place.Field.NAME));
+        autocompleteFragment.setPlaceFields(Arrays.asList(Place.Field.ID, Place.Field.NAME, Place.Field.LAT_LNG));
 
         autocompleteFragment.setOnPlaceSelectedListener(new PlaceSelectionListener() {
             @Override
@@ -161,6 +161,7 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
                 // TODO: Get info about the selected place.
                 destination = place.getName();
                 mDestinationLatLng = place.getLatLng();
+                System.out.println("debug");
             }
 
             @Override
@@ -211,6 +212,7 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
 
                                         getDriverLocation();
                                         getDriverInfo();
+                                        getHasRideEnded();
 
                                         mRequest.setText("Looking for Tower location...");
                                     }
@@ -273,6 +275,28 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
                         String driverCar = map.get("car").toString();
                         mDriverCar.setText(driverCar);
                     }
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+
+            }
+        });
+    }
+
+
+    private DatabaseReference driveHasEndedRef;
+    private ValueEventListener driveHasEndedRefListener;
+    private void getHasRideEnded() {
+        driveHasEndedRef = FirebaseDatabase.getInstance().getReference().child("Users").child("Towers").child(driverFoundId).child("customerRequest").child("customerRideId");
+
+        driveHasEndedRefListener = driveHasEndedRef.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                if(dataSnapshot.exists()) {
+                } else {
+                    endRide();
                 }
             }
 
@@ -485,6 +509,7 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
         requestBool = false;
         geoQuery.removeAllListeners();
         driverLocationRef.removeEventListener(driverLocationRefListener);
+        driveHasEndedRef.removeEventListener(driveHasEndedRefListener);
 
         String userId = mGlobalCurrentUserId;
 
