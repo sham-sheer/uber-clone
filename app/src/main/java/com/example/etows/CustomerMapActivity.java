@@ -11,6 +11,7 @@ import android.content.Intent;
 import android.content.RestrictionsManager;
 import android.content.pm.PackageManager;
 import android.location.Location;
+import android.media.Rating;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -18,6 +19,7 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
+import android.widget.RatingBar;
 import android.widget.TextView;
 
 import com.firebase.geofire.GeoFire;
@@ -83,6 +85,8 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
     private final String apiKey = "AIzaSyDd1UAqEcV1lqpYV3FarT4RWlyyVkDISkk";
 
     private RadioGroup mRadioGroup;
+    private RatingBar mRatingBar;
+
     private String requestService;
 
     @Override
@@ -104,6 +108,8 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
         mDriverName = (TextView) findViewById(R.id.driverName);
         mDriverPhone = (TextView) findViewById(R.id.driverPhone);
         mDriverCar = (TextView) findViewById(R.id.driverCar);
+
+        mRatingBar = (RatingBar) findViewById(R.id.ratingBar);
 
         mDriverInfo = (LinearLayout) findViewById(R.id.driverInfo);
 
@@ -285,6 +291,19 @@ public class CustomerMapActivity extends FragmentActivity implements OnMapReadyC
                     if(map.get("car") != null) {
                         String driverCar = map.get("car").toString();
                         mDriverCar.setText(driverCar);
+                    }
+
+                    int ratingSum = 0;
+                    int ratingCount = 0;
+                    int ratingTotal = 0;
+                    for (DataSnapshot child : dataSnapshot.child("rating").getChildren()) {
+                        ratingSum = ratingSum + Integer.valueOf(child.getValue().toString());
+                        ratingCount++;
+                    }
+
+                    if(ratingCount != 0) {
+                        ratingTotal = ratingSum/ratingCount;
+                        mRatingBar.setRating(ratingTotal);
                     }
                 }
             }
