@@ -102,7 +102,7 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
 
     private int status = 0;
 
-    private LatLng destinationLatLng;
+    private LatLng destinationLatLng, pickUpLatLng;
 
     private String mSignOutId;
     private String mGlobalCurrentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
@@ -196,12 +196,16 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
         String requestId = historyRef.push().getKey();
         driverRef.child(requestId).setValue(true);
         customerRef.child(requestId).setValue(true);
-
         HashMap map = new HashMap();
         map.put("driver", userId);
         map.put("customer", customerId);
         map.put("ratings", 0);
         map.put("timestamp", getCurrentTimestamp());
+        map.put("destination", destination);
+        map.put("location/from/lat", pickUpLatLng.latitude);
+        map.put("location/from/lng", pickUpLatLng.longitude);
+        map.put("location/to/lat", destinationLatLng.latitude);
+        map.put("location/to/lng", destinationLatLng.longitude);
         historyRef.child(requestId).updateChildren(map);
     }
 
@@ -392,7 +396,7 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
                         locationLng = Double.parseDouble(map.get(1).toString());
                     }
 
-                    LatLng pickUpLatLng = new LatLng(locationLat, locationLng);
+                    pickUpLatLng = new LatLng(locationLat, locationLng);
                     pickUpMarker = mMap.addMarker(new MarkerOptions().position(pickUpLatLng).title("Pick up here!"));
 
                     getRouteToMarker(pickUpLatLng);
