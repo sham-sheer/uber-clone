@@ -5,8 +5,11 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.graphics.Color;
 import android.os.Bundle;
+import android.provider.ContactsContract;
 import android.text.format.DateFormat;
 import android.util.Log;
+import android.view.View;
+import android.widget.RatingBar;
 import android.widget.TextView;
 
 import com.akexorcist.googledirection.DirectionCallback;
@@ -53,6 +56,8 @@ public class HistorySingleActivity extends AppCompatActivity implements OnMapRea
 
     private List<Polyline> polylines;
 
+    private RatingBar mRatingBar;
+
 
     private GoogleMap mMap;
     private SupportMapFragment mMapFragment;
@@ -72,6 +77,8 @@ public class HistorySingleActivity extends AppCompatActivity implements OnMapRea
         userPhone = (TextView) findViewById(R.id.userPhone);
 
         currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
+
+        mRatingBar = (RatingBar) findViewById(R.id.ratingBar);
 
         historyRideInfoDb = FirebaseDatabase.getInstance().getReference().child("history").child(rideId);
         getRideInformation();
@@ -98,9 +105,13 @@ public class HistorySingleActivity extends AppCompatActivity implements OnMapRea
                             if(!driverId.equals(currentUserId)) {
                                 userDriverOrCustomer = "Customers";
                                 getUserInformation("Towers", driverId);
+                                displayCustomerRelatedObjects();
                             }
                         }
                         if (child.getKey().equals("timestamp")) {
+                            mRatingBar.setRating(Integer.valueOf(child.getValue().toString()));
+                        }
+                        if (child.getKey().equals("rating")) {
                             rideDate.setText(getDate(Long.valueOf(child.getValue().toString())));
                         }
                         if (child.getKey().equals("destination")) {
@@ -126,6 +137,19 @@ public class HistorySingleActivity extends AppCompatActivity implements OnMapRea
 
             }
         });
+    }
+
+    private void displayCustomerRelatedObjects() {
+        mRatingBar.setVisibility(View.VISIBLE);
+        mRatingBar.setOnRatingBarChangeListener(new RatingBar.OnRatingBarChangeListener() {
+            @Override
+            public void onRatingChanged(RatingBar ratingBar, float rating, boolean fromUser) {
+                historyRideInfoDb.child("rating").setValue(rating);
+                DatabaseReference mDriverRatingDb = FirebaseDatabase.getInstance().getReference().child("Users").child("Towers").child(driverId).child("rating");
+                mDriverRatingDb.child(rideId).setValue(rating);
+            }
+        });
+
     }
 
     private void getUserInformation(String otherDriverOrCustomer, String otherUserId) {
