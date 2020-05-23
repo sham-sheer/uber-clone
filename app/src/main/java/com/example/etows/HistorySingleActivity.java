@@ -51,6 +51,8 @@ public class HistorySingleActivity extends AppCompatActivity implements OnMapRea
     private TextView userPhone;
 
     private LatLng destinationLatLng, pickUpLatLng;
+    private String distance;
+    private Double ridePrice;
 
     private final String apiKey = "AIzaSyDd1UAqEcV1lqpYV3FarT4RWlyyVkDISkk";
 
@@ -71,7 +73,7 @@ public class HistorySingleActivity extends AppCompatActivity implements OnMapRea
         rideId = getIntent().getExtras().getString("rideId");
 
         rideLocation = (TextView) findViewById(R.id.rideLocation);
-        rideDistance = (TextView) findViewById(R.id.rideLocation);
+        rideDistance = (TextView) findViewById(R.id.rideDistance);
         rideDate = (TextView) findViewById(R.id.rideDate);
         userName = (TextView) findViewById(R.id.userName);
         userPhone = (TextView) findViewById(R.id.userPhone);
@@ -108,15 +110,6 @@ public class HistorySingleActivity extends AppCompatActivity implements OnMapRea
                                 displayCustomerRelatedObjects();
                             }
                         }
-                        if (child.getKey().equals("timestamp")) {
-                            mRatingBar.setRating(Integer.valueOf(child.getValue().toString()));
-                        }
-                        if (child.getKey().equals("rating")) {
-                            rideDate.setText(getDate(Long.valueOf(child.getValue().toString())));
-                        }
-                        if (child.getKey().equals("destination")) {
-                            rideLocation.setText(child.getValue().toString());
-                        }
                         if (child.getKey().equals("location")) {
                             pickUpLatLng = new LatLng(Double.valueOf(child.child("from").child("lat").getValue().toString()),
                                     Double.valueOf(child.child("from").child("lng").getValue().toString()));
@@ -126,6 +119,20 @@ public class HistorySingleActivity extends AppCompatActivity implements OnMapRea
                                 getRouteToMarker();
                             }
 
+                        }
+                        if (child.getKey().equals("destination")) {
+                            rideLocation.setText(child.getValue().toString());
+                        }
+                        if (child.getKey().equals("distance")) {
+                            distance = child.getValue().toString();
+                            rideDistance.setText(distance.substring(0, Math.min(distance.length(), 5)) + " km");
+                            ridePrice = Double.valueOf(distance) * 0.5;
+                        }
+                        if (child.getKey().equals("timestamp")) {
+                            rideDate.setText(getDate(Long.valueOf(child.getValue().toString())));
+                        }
+                        if (child.getKey().equals("rating")) {
+                            mRatingBar.setRating(Integer.valueOf(child.getValue().toString()));
                         }
 
                     }

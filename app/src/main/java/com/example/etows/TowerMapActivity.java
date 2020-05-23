@@ -107,6 +107,7 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
     private int status = 0;
 
     private LatLng destinationLatLng, pickUpLatLng;
+    private float rideDistance;
 
     private String mSignOutId;
     private String mGlobalCurrentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
@@ -211,6 +212,9 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
         DatabaseReference customerRef = FirebaseDatabase.getInstance().getReference().child("Users").child("Customers").child(customerId).child("history");
         DatabaseReference historyRef = FirebaseDatabase.getInstance().getReference().child("history");
 
+        calculateDistance();
+
+
         String requestId = historyRef.push().getKey();
         driverRef.child(requestId).setValue(true);
         customerRef.child(requestId).setValue(true);
@@ -224,7 +228,22 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
         map.put("location/from/lng", pickUpLatLng.longitude);
         map.put("location/to/lat", destinationLatLng.latitude);
         map.put("location/to/lng", destinationLatLng.longitude);
+        map.put("distance", rideDistance);
         historyRef.child(requestId).updateChildren(map);
+    }
+
+    private void calculateDistance() {
+        Location pickUpLoc = new Location("PickUp");
+        pickUpLoc.setLatitude(pickUpLatLng.latitude);
+        pickUpLoc.setLongitude(pickUpLatLng.longitude);
+
+        Location destinationLoc = new Location("Destination");
+        destinationLoc.setLatitude(destinationLatLng.latitude);
+        destinationLoc.setLongitude(destinationLatLng.longitude);
+
+        rideDistance = pickUpLoc.distanceTo(destinationLoc);
+
+
     }
 
     private Long getCurrentTimestamp() {
@@ -260,6 +279,7 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
             }
         });
         customerId = "";
+        rideDistance = 0;
 
         if(pickUpMarker != null) {
             pickUpMarker.remove();
@@ -521,7 +541,10 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
 
     @Override
     public void onLocationChanged(Location location) {
-        Log.d("Location Request", "Ongoing");
+        if(!customerId.equals("")) {
+            rideDistance += mLastLocation.distanceTo(location);
+        }
+
         mLastLocation = location;
         LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
 
