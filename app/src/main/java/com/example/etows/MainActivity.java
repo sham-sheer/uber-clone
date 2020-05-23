@@ -18,6 +18,8 @@ public class MainActivity extends AppCompatActivity {
         nTower = (Button) findViewById(R.id.tower);
         nCustomer = (Button) findViewById(R.id.customer);
 
+        startService(new Intent(MainActivity.this, OnAppKilled.class));
+
         nTower.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {

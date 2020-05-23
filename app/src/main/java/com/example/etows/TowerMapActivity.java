@@ -21,8 +21,11 @@ import android.provider.ContactsContract;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.CompoundButton;
 import android.widget.LinearLayout;
+import android.widget.Switch;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.akexorcist.googledirection.DirectionCallback;
 import com.akexorcist.googledirection.GoogleDirection;
@@ -38,6 +41,7 @@ import com.firebase.geofire.GeoLocation;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApi;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.Result;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
@@ -55,6 +59,8 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -78,15 +84,12 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
 
     private LocationRequest mLocationRequest;
     private FusedLocationProviderClient mFusedLocationClient;
-    private LocationCallback mLocationCallback = new LocationCallback(){
+    private LocationCallback mLocationCallback = new LocationCallback() {
         @Override
         public void onLocationResult(LocationResult locationResult) {
-            for (Location location : locationResult.getLocations()) {
-                Log.i("MainActivity", "Location: " + location.getLatitude() + " " + location.getLongitude());
-
-            }
-        };
-
+            // do work here
+            onLocationChanged(locationResult.getLastLocation());
+        }
     };
 
     private long UPDATE_INTERVAL = 10 * 1000;  /* 10 secs */
@@ -99,6 +102,7 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
     private final String apiKey = "AIzaSyDd1UAqEcV1lqpYV3FarT4RWlyyVkDISkk";
 
     private Button nLogout, mSettings, mRideStatus;
+    private Switch mWorkingSwitch;
 
     private int status = 0;
 
@@ -134,6 +138,8 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
         mCustomerPhone = (TextView) findViewById(R.id.customerPhone);
         mCustomerDestination = (TextView) findViewById(R.id.customerDestination);
         mCustomerInfo = (LinearLayout) findViewById(R.id.customerInfo);
+
+        mWorkingSwitch = (Switch) findViewById(R.id.workingSwitch);
 
 
         nLogout.setOnClickListener(new View.OnClickListener() {
@@ -180,6 +186,18 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
                         recordRide();
                         endRide();
                         break;
+                }
+            }
+        });
+
+        mWorkingSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                String userId = mGlobalCurrentUserId;
+                if(isChecked) {
+                    connectDriver();
+                }else {
+                    disconnectDriver();
                 }
             }
         });
@@ -278,14 +296,7 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
 
         // new Google API SDK v11 uses getFusedLocationProviderClient(this)
         mFusedLocationClient = getFusedLocationProviderClient(this);
-        mFusedLocationClient.requestLocationUpdates(mLocationRequest, new LocationCallback() {
-                    @Override
-                    public void onLocationResult(LocationResult locationResult) {
-                        // do work here
-                        onLocationChanged(locationResult.getLastLocation());
-                    }
-                },
-                Looper.myLooper());
+        mFusedLocationClient.requestLocationUpdates(mLocationRequest, mLocationCallback, Looper.myLooper());
     }
 
     private void getAssignedCustomer() {
@@ -510,12 +521,9 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
 
     @Override
     public void onLocationChanged(Location location) {
+        Log.d("Location Request", "Ongoing");
         mLastLocation = location;
         LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
-        //Location mockLocation = new Location("provider");
-        //mockLocation.setLatitude(37.441883);
-        //mockLocation.setLongitude(-122.143021);
-        //LatLng mockLatLng = new LatLng(37.441883, -122.143021);
 
         if(!cameraShowingRoute) {
             mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
@@ -578,16 +586,10 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
 
     @Override
     public void onConnected(@Nullable Bundle bundle) {
-        mLocationRequest = new LocationRequest();
-        mLocationRequest.setInterval(UPDATE_INTERVAL);
-        mLocationRequest.setFastestInterval(FASTEST_INTERVAL);
-
-        if(ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            return;
-        }
-        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-//        LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
-        startLocationUpdates();
+//        if(ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+//            return;
+//        }
+//        startLocationUpdates();
 
     }
 
@@ -601,7 +603,22 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
 
     }
 
+    private void connectDriver() {
+        if(ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+        startLocationUpdates();
+
+    }
+
     private void disconnectDriver() {
+        Task<Void> result = mFusedLocationClient.removeLocationUpdates(mLocationCallback).addOnSuccessListener(new OnSuccessListener<Void>() {
+            @Override
+            public void onSuccess(Void aVoid) {
+                Toast.makeText(TowerMapActivity.this, "Driver not working", Toast.LENGTH_SHORT).show();
+            }
+        });
+
         DatabaseReference ref = FirebaseDatabase.getInstance().getReference("driversAvailable");
 
         GeoFire geoFire = new GeoFire(ref);
@@ -628,7 +645,12 @@ public class TowerMapActivity extends FragmentActivity implements OnMapReadyCall
     public void onPause() {
         super.onPause();
         if (mFusedLocationClient != null) {
-            mFusedLocationClient.removeLocationUpdates(mLocationCallback);
+            Task<Void> result = mFusedLocationClient.removeLocationUpdates(mLocationCallback).addOnSuccessListener(new OnSuccessListener<Void>() {
+                @Override
+                public void onSuccess(Void aVoid) {
+                    Toast.makeText(TowerMapActivity.this, "Driver not working", Toast.LENGTH_SHORT).show();
+                }
+            });
         }
     }
 
